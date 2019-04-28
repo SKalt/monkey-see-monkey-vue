@@ -1,5 +1,9 @@
 {
   "devDependencies": {
+    "@babel/core": "^7.4.4",
+    "@babel/preset-env": "^7.4.4",
+    "babel-jest": "^24.7.1",
+    "core-js": "3",
     "eslint": "^5.16.0",
     "eslint-config-prettier": "^4.1.0",
     "eslint-plugin-security": "^1.4.0",
@@ -11,12 +15,13 @@
     "tslib": "^1.9.3",
     "typescript": "^3.4.5",
     "vue": "^2.6.10",
+    "vue-jest": "^3.0.4",
     "vue-template-compiler": "^2.6.10"
   },
   "scripts": {
     "build": "rollup -c",
     "dev": "rollup -c -w",
-    "pretest": "npm run build"
+    "test": "jest"
   },
   "dependencies": {
     "@mozillasecurity/octo": "^2.0.0",
@@ -24,7 +29,8 @@
     "big-list-of-naughty-strings": "git+https://github.com/minimaxir/big-list-of-naughty-strings.git",
     "dedent": "^0.7.0",
     "jsdom-global": "^3.0.2",
-    "lodash-es": "^4.17.11"
+    "lodash-es": "^4.17.11",
+    "rollup-plugin-vue": "^5.0.0"
   },
   "name": "monkey-see-monkey-vue",
   "version": "1.0.0",
@@ -32,5 +38,23 @@
   "main": "src/index.js",
   "author": "Steven Kalt <kalt.steven@gmail.com>",
   "license": "AGPL-3.0-or-later",
-  "private": false
+  "private": false,
+  "jest": {
+    "moduleNameMapper": {
+      "^vue$": "vue/dist/vue.common.js",
+      "^lodash-es$": "lodash"
+    },
+    "moduleFileExtensions": [
+      "js",
+      "vue"
+    ],
+    "transform": {
+      "^.+\\.js$": "<rootDir>/node_modules/babel-jest",
+      ".*\\.(vue)$": "<rootDir>/node_modules/vue-jest"
+    },
+    "transformIgnorePatterns": [
+      "<rootDir>/node_modules/(?!(lodash-es))"
+    ]
+  },
+  "browserslist": "last 2 versions and not dead and not ie <= 11 and not edge <= 18"
 }
