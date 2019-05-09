@@ -1,4 +1,16 @@
 {
+  "name": "monkey-see-monkey-vue",
+  "version": "1.0.0",
+  "description": "a monkey/fuzz-testing utility for vue.js applications",
+  "main": "src/index.js",
+  "author": "Steven Kalt <kalt.steven@gmail.com>",
+  "license": "AGPL-3.0-or-later",
+  "private": false,
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "test": "jest"
+  },
   "devDependencies": {
     "@babel/core": "^7.4.4",
     "@babel/preset-env": "^7.4.4",
@@ -15,30 +27,20 @@
     "tslib": "^1.9.3",
     "typescript": "^3.4.5",
     "vue": "^2.6.10",
-    "vue-jest": "^3.0.4",
+    "vue-jest": "git+ssh://git@github.com:vuejs/vue-jest.git#4.0.0-beta.2",
     "vue-template-compiler": "^2.6.10"
-  },
-  "scripts": {
-    "build": "rollup -c",
-    "dev": "rollup -c -w",
-    "test": "jest"
   },
   "dependencies": {
     "@mozillasecurity/octo": "^2.0.0",
     "@vue/test-utils": "^1.0.0-beta.29",
     "big-list-of-naughty-strings": "git+https://github.com/minimaxir/big-list-of-naughty-strings.git",
     "dedent": "^0.7.0",
+    "jsdom": "^15.0.0",
     "jsdom-global": "^3.0.2",
     "lodash-es": "^4.17.11",
+    "postcss": "^7.0.14",
     "rollup-plugin-vue": "^5.0.0"
   },
-  "name": "monkey-see-monkey-vue",
-  "version": "1.0.0",
-  "description": "a monkey/fuzz-testing utility for vue.js applications",
-  "main": "src/index.js",
-  "author": "Steven Kalt <kalt.steven@gmail.com>",
-  "license": "AGPL-3.0-or-later",
-  "private": false,
   "jest": {
     "moduleNameMapper": {
       "^vue$": "vue/dist/vue.common.js",
@@ -49,8 +51,8 @@
       "vue"
     ],
     "transform": {
-      "^.+\\.js$": "<rootDir>/node_modules/babel-jest",
-      ".*\\.(vue)$": "<rootDir>/node_modules/vue-jest"
+      "^.+\\.js$": "babel-jest",
+      ".*\\.(vue)$": "vue-jest"
     },
     "transformIgnorePatterns": [
       "<rootDir>/node_modules/(?!(lodash-es))"
