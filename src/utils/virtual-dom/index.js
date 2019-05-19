@@ -65,7 +65,19 @@ export function tagTree(vnode, indent = 0) {
     .join("");
   return repr + "\n" + children;
 }
+
+export const idSequence = (prefix = "") => {
+  let index = 0;
+  if (prefix) return () => `${prefix}-${index++}`;
+  else return () => index++;
+};
+
 }
+
+export const ns = (namespacePrefix = "") => {
+  if (namespacePrefix) return propName => `${namespacePrefix}_${propName}`;
+  else return propname => propname;
+};
 
 const makeMixin = ({ mounted = noop, updated = noop, destroyed = noop }) => {
   // Map {vm => {[sel]: evts}}
