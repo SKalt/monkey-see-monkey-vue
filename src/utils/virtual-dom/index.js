@@ -52,19 +52,19 @@ export function getAllVNodeListeners(
 
 // TODO: clean this fn up.  Originally intended as a debugging helper.
 export function tagTree(vnode, indent = 0) {
-  const repr = " ".repeat(2 * indent) + (vnode.tag || "<node>") + "\n";
-  return (
-    repr +
-    (vnode.children || [])
-      .map(
-        child =>
-          tagTree(child, indent + 1) +
-          (child.componentInstance
-            ? tagTree(child.componentInstance._vnode, indent + 2)
-            : "")
-      )
-      .join("\n")
-  );
+  const repr = " ".repeat(2 * indent) + (vnode.tag || "<node>");
+  const children = (vnode.children || [])
+    .map(child => {
+      return (
+        tagTree(child, indent + 1) +
+        (child.componentInstance
+          ? tagTree(child.componentInstance._vnode, indent + 2)
+          : "")
+      );
+    })
+    .join("");
+  return repr + "\n" + children;
+}
 }
 
 const makeMixin = ({ mounted = noop, updated = noop, destroyed = noop }) => {
