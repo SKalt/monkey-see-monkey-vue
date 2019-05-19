@@ -90,24 +90,23 @@ const makeMixin = ({ mounted = noop, updated = noop, destroyed = noop }) => {
     vms: new Map()
   };
 
-  function refresh() {
-    const vnode = vnodeOf(this);
+  function refresh(vm) {
+    const vnode = vnodeOf(vm);
     if (!vnode) return; // this is the root
-    const prev = result.vms.get(this);
+    const prev = result.vms.get(vm);
     const next = getAllVNodeListeners(vnode, [vnode], [], {});
     if ([...Object.keys(next)].length) {
-      result.vms.set(this, next);
+      result.vms.set(vm, next);
     }
     return [prev, next];
   }
   result.mixin = {
     mounted() {
-      const [, next] = refresh.bind(this)();
-      if (!next) console.log(nameOf(this));
+      const [, next] = refresh(this);
       mounted(this, next);
     },
     updated() {
-      const [prev, next] = refresh.bind(this)();
+      const [prev, next] = refresh(this);
       updated(this, prev, next);
     },
     destroyed() {
