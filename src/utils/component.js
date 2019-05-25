@@ -11,6 +11,24 @@ export function walkComponentTree(vm, callbacks = []) {
   }
   recur(root);
 }
+// see
+// https://github.com/vuejs/vue-devtools/blob/dev/src/backend/index.js#L354:10
+// at captureChild()
+// const isComponentInstance = vnode => Boolean(vnode.componentInstance);
+// const isFunctionalComponent = vnode =>
+//   vnode.fnContext && !vnode.componentInstance;
+// if (child.fnContext && !child.componentInstance) {
+//     return capture(child)
+//   } else if (child.componentInstance) {
+//     if (!child.componentInstance._isBeingDestroyed) return capture(child.componentInstance)
+//   } else if (child.children) {
+//     return flatten(child.children.map(captureChild))
+//   }
+
+export function bindHook(vm, hook, callback) {
+  vm.$on(`hook:${hook}`, callback);
+}
+// const onUpdated = (vm, callback) => bindHook(vm, 'updated', callback)
 
 export function nameOf(vm) {
   if (isRoot(vm)) return "Root";

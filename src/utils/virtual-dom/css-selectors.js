@@ -24,6 +24,14 @@ export function childNumber(vnode, family = []) {
   return `:nth-child(${n})`;
 }
 
+const getStyle = vnode => (vnode.elm || {}).style || {};
+const isDisplayNone = (style = {}) => style.display === "none";
+const isVisibilityHidden = (style = {}) => style.visibility === "hidden";
+export function isVisible(vnode) {
+  const style = getStyle(vnode);
+  return !isDisplayNone(style) && !isVisibilityHidden(style);
+}
+
 export function selectorOf(vnode, siblings = []) {
   if (!vnode.tag) return "";
   return [

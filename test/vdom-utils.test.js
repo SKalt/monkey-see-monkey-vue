@@ -53,4 +53,25 @@ test("find all DOM events in a tree of components", () => {
       '{"span.click-me":["click"]} -> {"span.click-me":["click"]}'
   ]);
 });
-test("generating selectors", () => {});
+
+import ButtonToggler from "./fixtures/ButtonToggler.vue";
+import { componentTagTree, idSequence, watch } from "../src/utils/virtual-dom";
+test("id sequence generation", () => {
+  let id = idSequence("foo");
+  expect(id()).toEqual("foo-0");
+  expect(id.next()).toEqual("foo-1");
+  id = idSequence();
+  expect(id()).toEqual(0);
+  expect(id()).toEqual(1);
+});
+test("walker", () => {
+  /* eslint-disable no-console */
+  const mounted = utils.mount(ButtonToggler);
+  console.log(tagTree(mounted.vm._vnode));
+  // console.log(truthyKeys(mounted.vm));
+  // watch(mounted.vm);
+  console.log(truthyKeys(mounted.vm.$root.$options));
+  console.log(componentTagTree(mounted.vm.$root).repr);
+  // mounted.vm.__hidden__ = true;
+  // console.log(mounted.vm.__hidden__); // you can
+});

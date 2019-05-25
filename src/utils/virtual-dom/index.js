@@ -1,6 +1,7 @@
 import { noop } from "../common.js";
 import { nameOf } from "../component.js";
-import { selectorOf } from "./css-selectors.js";
+import { selectorOf, isVisible } from "./css-selectors.js";
+import assert from "assert";
 export function getVNodeListeners(vnode) {
   return [
     ...new Set([
@@ -50,7 +51,6 @@ export function getAllVNodeListeners(
   return agg;
 }
 
-// TODO: clean this fn up.  Originally intended as a debugging helper.
 export function tagTree(vnode, indent = 0) {
   const repr = " ".repeat(2 * indent) + (vnode.tag || "<node>");
   const children = (vnode.children || [])
@@ -66,13 +66,28 @@ export function tagTree(vnode, indent = 0) {
   return repr + "\n" + children;
 }
 
+function getInstanceChildren(vm) {
+  return [...getVnodeChildren(vm._vnode || {}), vm.$chilren].filter(Boolean);
+}
+
+function getVnodeChildren(vnode) {
+  return vnode.children || [];
+}
+
 export const idSequence = (prefix = "") => {
   let index = 0;
-  if (prefix) return () => `${prefix}-${index++}`;
-  else return () => index++;
+  const result = prefix ? () => `${prefix}-${index++}` : () => index++;
+  result.next = result; // sugar
+  return result;
 };
 
-}
+// export function componentTagTree(vm) {
+//   const vms = new Map();
+//   function recur(vm, indent = 0) {
+//     return [];
+//   }
+//   return recur(vm).join("\n");
+// }
 
 export const ns = (namespacePrefix = "") => {
   if (namespacePrefix) return propName => `${namespacePrefix}_${propName}`;
@@ -124,4 +139,139 @@ export function watchInteractivityChanges(
   const { mixin, ...watcher } = makeMixin({ mounted, updated, destroyed });
   Vue.mixin(mixin);
   return watcher;
+}
+
+// an abstract function for walking a tree
+function dfs(
+  node,
+  getChildren = noop,
+  shouldRecur = noop,
+  callbacks = [],
+  state = {}
+) {
+  console.log({ pre: { state } });
+  state = callbacks.reduce((currentState, cb) => cb(node, currentState), state);
+  console.log({ mid: { state } });
+  (getChildren(node) || []).forEach(child => {
+    if (shouldRecur(child, state)) {
+      state = dfs(child, getChildren, shouldRecur, callbacks, state);
+    }
+  });
+  return state;
+}
+
+export function componentTagTree(vm) {
+  const getChildren = vm => vm.$children || [];
+  // const shouldRecur = () => true
+  const getName = vm => vm.$options.name || vm.$options._componentTag;
+  const callbacks = [
+    (vm, { repr = "", indent = 0 } = {}) => {
+      repr = repr + " ".repeat(2 * indent) + (getName(vm) || "<node>") + "\n";
+      indent += 1;
+      return { repr, indent };
+    }
+  ];
+  return dfs(vm, getChildren, () => true, callbacks, { repr: "", indent: 0 });
+}
+
+const namespace = ns("__MONKEY");
+const visibilityMark = namespace("visible__");
+const markVisible = (v, { visible = true } = {}) => {
+  return (v[visibilityMark] = visible || isVisible(v || v._vnode));
+};
+
+// const vmOf = vnode => vnode.componentInstance;
+// const fnContext = vnode => vnode.fnContext;
+// import { isFunctional } from "../component";
+const makeSelector = (v, { siblings = [v], selector = "" } = {}) => {
+  return (selector += ` > ${selectorOf(v, siblings)}`);
+};
+const getListeners = (v, { visible = true, selector = "", agg = {} } = {}) => {
+  const listeners = visible ? getVNodeListeners(v) : [];
+  // TODO: case for vm
+  agg[selector] = listeners;
+  return agg;
+};
+function update(vm, vms, actions) {
+  vm;
+}
+export function watch(vm) {
+  const vms = new Map();
+  const actions = new Map();
+  const bindHooks = vm => {
+    vm.$on(`hook:updated`, () => {
+      // update vm
+    });
+    vm.$on(`hook:beforeDestroy`, () => {
+      vms.delete(vm);
+      actions.delete(vm);
+    });
+  };
+
+  // const observed = new Set();
+  // state: {
+  //   visible: bool,
+  //   siblings: VNode[],
+  //   selector: string,
+  //   agg: Map(selector => action)
+  // }
+  // visibility utils
+  const vmOf = vnode => {};
+  const _callbacks = [
+    (v, state = { visible: true, selector: "" }) => {
+      const [vm, vnode] = vm => {
+        if (
+          vm.$options &&
+          vm.$options.abstract &&
+          vm._vnode &&
+          vm._vnode.componentInstance
+        ) {
+          vm = vm._vnode.componentInstance;
+        }
+      };
+
+      state.visible = markVisible(vnode, state);
+      // state.vm =
+      // state.vnode =
+      state.selector = makeSelector(v, state);
+      state.agg = getListeners(v, state);
+      return state;
+    }
+  ];
+  // const setHidden = v => (v[visibilityMark] = true);
+  // const setVisible = v => (v[visibilityMark] = false);
+
+  function process(vnode, siblings = [vnode], selector = "", agg = {}) {
+    const listeners = getVNodeListeners(vnode);
+    selector += ` > ${selectorOf(vnode, siblings)}`;
+    assert(
+      !(selector in agg),
+      `selector unexpectedly in aggregator: '${selector}'`
+    );
+    agg[selector] = listeners;
+    return agg;
+  }
+
+  function recur(vnode, siblings = [vnode] /*state will go here*/) {
+    const selector = selectorOf(vnode, siblings);
+    getVNodeListeners(vnode);
+  }
+  recur(vm._vnode);
+  return dfs();
+}
+export function _watch(vm) {
+  const vms = new Map(/*id:vm*/);
+  const actions = new Map(/*vm: {[selector]: Array<string>}*/);
+
+  function recur(
+    vnode,
+    visible = true,
+    family = [vnode],
+    selector = "",
+    agg = {}
+  ) {
+    visible = markVisible(vnode, { visible });
+    console.log({ visible });
+  }
+  recur(vm._vnode);
 }
