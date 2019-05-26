@@ -69,9 +69,10 @@ test("walker", () => {
   const mounted = utils.mount(ButtonToggler);
   console.log(tagTree(mounted.vm._vnode));
   // console.log(truthyKeys(mounted.vm));
-  // watch(mounted.vm);
-  console.log(truthyKeys(mounted.vm.$root.$options));
-  console.log(componentTagTree(mounted.vm.$root).repr);
+  // const _ = watch(mounted.vm);
+  // console.log({ _ });
+  // console.log([mounted.findAll(".click-me").length]);
+  console.log(componentTagTree(mounted.vm.$root));
   // mounted.vm.__hidden__ = true;
   // console.log(mounted.vm.__hidden__); // you can
 });
