@@ -6,8 +6,8 @@ import assert from "assert";
 export function getVNodeListeners(vnode) {
   return [
     ...new Set([
-      ...Object.keys((vnode.data || {}).on || {}),
-      ...Object.keys((vnode.data || {}).nativeOn || {})
+      ...Object.keys(delve(vnode, "data.on", {})),
+      ...Object.keys(delve(vnode, "data.nativeOn", {}))
     ])
   ].sort();
 }
@@ -16,29 +16,35 @@ function vnodeOf(vm) {
   return vm._vnode || vm.$vnode;
 }
 
-// https://vuejs.org/v2/guide/render-function.html#Event-amp-Key-Modifiers
-export function getAllVNodeListeners(
-  vnode,
-  siblings = [vnode],
-  path = [],
-  agg = {},
-  deep = false
-) {
-  if (!vnode) return agg; // it's a root
-  const selector = [...path, selectorOf(vnode, siblings)];
-  const listeners = getVNodeListeners(vnode);
-  if (listeners.length) {
-    agg[selector.join(" > ")] = listeners;
-  }
-  (vnode.children || []).forEach(child => {
-    agg = getAllVNodeListeners(child, vnode.children, selector, agg);
-  });
-
-  return agg;
-}
-
 function getVnodeChildren(vnode) {
   return vnode.children || [];
+}
+
+// https://vuejs.org/v2/guide/render-function.html#Event-amp-Key-Modifiers
+export function getAllVNodeListeners(
+  vnode
+  // siblings = [vnode],
+  // path = [],
+  // agg = {},
+) {
+  let state = { family: [vnode], path: "", agg: {} };
+  const getChildren = getVnodeChildren;
+  const shouldRecur = vnode => Boolean(vnode) && isVisible(vnode);
+  const callbacks = [
+    (vnode, _, { selector = "", agg = {}, family = [vnode] } = {}) => {
+      selector = [...selector, selectorOf(vnode, family)];
+      const listeners = getVNodeListeners(vnode);
+      assert(
+        !(selector in agg),
+        `${selector} in ${JSON.stringify(agg, null, 2)}`
+      );
+      if (listeners.length) agg[selector.join(" > ")] = listeners;
+      family = getChildren(vnode);
+      return { selector, family, agg };
+    }
+  ];
+
+  return dfs(vnode, getChildren, shouldRecur, callbacks, state, state).agg;
 }
 
 export const idSequence = (prefix = "") => {
