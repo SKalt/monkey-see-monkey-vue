@@ -1,3 +1,5 @@
+const debug = require("debug");
+import delve from "dlv";
 export function htmlId(vnode) {
   const id = (vnode.elm || {}).id;
   return id ? "#" + id : "";
@@ -12,15 +14,35 @@ export function className(vnode) {
     .map(cls => "." + cls)
     .join("");
 }
-
-export function childNumber(vnode, family = []) {
+import { truthyKeys } from "../common";
+export function childNumber(vnode, family = [vnode]) {
+  // const dbg = debug("child-number");
+  // dbg({
+  //   vnode: [vnode.tag, delve(vnode, "elm.nodeType")],
+  //   family: family.map(f => [f.tag, delve(f, "elm.nodeType")])
+  // });
+  // debug("css:child-number")();
   // vnode.parent isn't reliably defined.
-  family = family.filter(f => f.tag);
+  // if (!vnode.tag) console.log("ught");
+  // family = family.filter(f => Boolean(f.tag));
+  // debug("css:child-number")(JSON.stringify(family.map(f => f.tag)));
+
+  if (family.filter(f => f.tag === null).length > 0) {
+    // debug("css:child-number:bad")(truthyKeys(family[0]));
+  }
   if (family.filter(f => f.tag === vnode.tag).length === 1) return "";
   const n = family.indexOf(vnode) + 1; // css selectors are 1-indexed
-  if (n == 0) throw new Error("vnode not in family");
-  if (n == 1) return ":first-child";
-  if (n == family.length - 1) return ":last-child";
+
+  if (n == 0) {
+    debug("css:child-number:bad")(family);
+    debug("css:child-number:bad-2")(vnode.children[0].elm.nodeType);
+    throw new Error(
+      `vnode ${vnode.tag} not in family ${JSON.stringify(
+        family.map(f => f.tag)
+      )}`
+    );
+  } else if (n == 1) return ":first-child";
+  else if (n == family.length - 1) return ":last-child";
   return `:nth-child(${n})`;
 }
 
@@ -32,12 +54,12 @@ export function isVisible(vnode) {
   return !isDisplayNone(style) && !isVisibilityHidden(style);
 }
 
-export function selectorOf(vnode, siblings = []) {
+export function selectorOf(vnode, family = [vnode]) {
   if (!vnode.tag) return "";
   return [
     vnode.tag,
     htmlId(vnode),
     className(vnode),
-    childNumber(vnode, siblings)
+    childNumber(vnode, family)
   ].join("");
 }

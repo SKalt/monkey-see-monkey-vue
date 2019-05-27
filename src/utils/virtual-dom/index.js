@@ -3,12 +3,11 @@ import { noop, truthyKeys } from "../common.js";
 import { nameOf } from "../component.js";
 import { selectorOf, isVisible } from "./css-selectors.js";
 import assert from "assert";
-
-import debug from "debug";
-debug.enable("msmv*");
-debug.disable("msmv:agg");
-const dbgr = n => (...args) => debug(`msmv${n ? ":" + n : ""}`)(...args);
-// const dbg = dbgr();
+const debug = require("debug");
+debug.enable("*");
+function interactableElement(vnode) {
+  return delve(vnode, "elm.nodeType") !== 3;
+}
 // an abstract function for walking a tree
 function dfs(
   node,
@@ -43,7 +42,7 @@ export function getVNodeListeners(vnode) {
  * @param  {VueComponent} vm
  * @return {VNode} the root vnode
  */
-function vnodeOf(vm) {
+export function vnodeOf(vm) {
   return vm._vnode || vm.$vnode;
 }
 /**
@@ -60,20 +59,23 @@ function aggregateVNodeListeners(
   _,
   { selector = [], family = [vnode], agg = {} } = {}
 ) {
-  const dbg = dbgr("agg");
+  const dbg = debug("aggVN");
+  dbg(agg);
+  // assert(
+  //   family.length > 0,
+  //   `${vnode.tag}[${delve(vnode, "parent.tag")}] not in ${JSON.stringify(
+  //     family.map(f => f.tag)
+  //   )}`
+  // );
   // console.log(agg.id);
   // TODO: figure out how to break this into a composable function
   selector = [...selector, selectorOf(vnode, family)];
-  dbg(
-    selector.join(" > ") + "\n",
-    JSON.stringify(agg, null, 2),
-    `fam: ${family.length}`
-  );
   const listeners = getVNodeListeners(vnode);
   assert(!(selector in agg), `${selector} in ${JSON.stringify(agg, null, 2)}`);
   if (listeners.length) agg[selector.join(" > ")] = listeners;
-  dbgr("agg:listeners")(listeners);
-  family = getVNodeChildren(vnode);
+  family = getNonTextVnodeChildren(vnode);
+  // dbg(family.map(f => f.tag));
+  family = [...family];
   return { selector, family, agg };
 }
 
@@ -209,70 +211,74 @@ const bindHooks = (vm, { vms, actions } = {}) => {
 };
 const aggId = idSequence("agg");
 const isAbstract = vm => delve(vm, "$options.abstract", false);
-const vmOf = vnode => vnode.componentInstance; // naive
+export const vmOf = vnode => vnode.componentInstance; // naive
+
+const _refresh = (
+  vnode,
+  _ /*{} = {}*/, // state,
+  {
+    visible = true,
+    selector = [],
+    family = [vnode],
+    agg = {},
+    actions,
+    captured
+  } = {} // parentState
+  // parentState = {visible, selector, vm, agg}
+) => {
+  visible = markVisible(vnode, { visible }); // side-effect: marks vnode
+  const aggregated = aggregateVNodeListeners(vnode, null, {
+    selector,
+    family,
+    agg
+  });
+  let vm = vmOf(vnode);
+  if (vm) {
+    if (!actions.has(vm) && !vm[vmUidMark]) {
+      bindHooks(vm, { vms: captured, actions });
+      vm[vmUidMark] = uid.next();
+    }
+    agg = { id: aggId.next() }; // break inheritence
+    debug("agg:_refresh")(nameOf(vm), JSON.stringify(agg || {}, null, 2));
+    actions.set(vm, agg); // will get populated by callbacks on children
+    selector = []; // selectors should be relative to the nearest VM
+    if (isAbstract(vm) && vmOf(vnodeOf(vm))) {
+      /*delve(vm, "_vnode.componentInstance")*/
+      vm = vm._vnode.componentInstance;
+    }
+    vm[visibilityMark] = visible;
+    // register listeners in actions here
+    vnode = vnodeOf(vm);
+    // debug("agg:_refresh")(vnode === vm.$vnode, vnode === vm._vnode);
+    family = [vnode];
+    // debug("agg:_refresh")(family);
+  }
+  assert(family.indexOf(vnode) >= 0, vnode.tag + "\n" + family.map(f => f.tag));
+  return { visible, ...aggregated, actions, captured };
+};
+function getNonTextVnodeChildren(vnode) {
+  return [...getVNodeChildren(vnode), delve(vnode, "componentInstance._vnode")]
+    .filter(Boolean)
+    .filter(interactableElement);
+}
 export function watch(vm) {
-  const vnode = vnodeOf(vm);
+  // const vnode = vnodeOf(vm);
   const actions = new Map();
   // const captured = new Set(); /*new Map();*/
-  function getChildren(vnode) {
-    return [
-      ...getVNodeChildren(vnode),
-      delve(vnode, "componentInstance._vnode")
-    ].filter(Boolean);
-  }
+  const getChildren = getNonTextVnodeChildren;
   let state = {
     // contested bewteen this vnode and its parent
     vm: undefined,
     // inhereted -- vnode
     visible: true,
-    siblings: undefined, // normally an array of vnodes
+    family: [vm.$vnode], // normally an array of vnodes
     selector: [],
     agg: { id: aggId.next() },
     // always the same Map instance
     actions
   };
 
-  const _refresh = (
-    vnode,
-    _ /*{} = {}*/, // state,
-    {
-      visible = true,
-      selector = [],
-      family = [],
-      agg = {},
-      actions,
-      captured
-    } = {} // parentState
-    // parentState = {visible, selector, vm, agg}
-  ) => {
-    const dbg = dbgr("agg:rf");
-    visible = markVisible(vnode, { visible }); // side-effect: marks vnode
-    let vm = vmOf(vnode);
-    if (vm) {
-      if (!actions.has(vm) && !vm[vmUidMark]) {
-        bindHooks(vm, { vms: captured, actions });
-        vm[vmUidMark] = uid.next();
-      }
-      dbg("hasVm", agg.id);
-      agg = { id: aggId.next() }; // break inheritence
-      dbg("newVm", agg.id);
-      actions.set(vm, agg); // will get populated by callbacks on children
-      selector = []; // selectors should be relative to the nearest VM
-      if (isAbstract(vm) && vmOf(vnodeOf(vm))) {
-        /*delve(vm, "_vnode.componentInstance")*/
-        vm = vm._vnode.componentInstance;
-      }
-      vm[visibilityMark] = visible;
-      // register listeners in actions here
-    }
-    const aggregated = aggregateVNodeListeners(vnode, {
-      selector,
-      family,
-      agg
-    });
-    return { visible, ...aggregated, actions, captured };
-  };
   const callbacks = [_refresh];
-  state = dfs(vnode, getChildren, () => true, callbacks, state, state);
+  state = dfs(vm.$vnode, getChildren, () => true, callbacks, state, state);
   return state.actions;
 }
