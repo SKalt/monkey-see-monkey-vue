@@ -3,6 +3,34 @@ import { noop, truthyKeys } from "../common.js";
 import { nameOf } from "../component.js";
 import { selectorOf, isVisible } from "./css-selectors.js";
 import assert from "assert";
+
+import debug from "debug";
+debug.enable("msmv*");
+debug.disable("msmv:agg");
+const dbgr = n => (...args) => debug(`msmv${n ? ":" + n : ""}`)(...args);
+// const dbg = dbgr();
+// an abstract function for walking a tree
+function dfs(
+  node,
+  getChildren = noop,
+  shouldRecur = noop,
+  callbacks = [],
+  state = {},
+  parentState = { ...state }
+) {
+  // TODO: make immutable; eliminate one of the state args
+  state = callbacks.reduce(
+    (currentState, cb) => cb(node, currentState, parentState),
+    parentState
+  );
+  parentState = state;
+  return (getChildren(node) || []).reduce((state, child) => {
+    return shouldRecur(child, state)
+      ? dfs(child, getChildren, shouldRecur, callbacks, state, parentState)
+      : state;
+  }, state);
+}
+
 export function getVNodeListeners(vnode) {
   return [
     ...new Set([
@@ -11,38 +39,49 @@ export function getVNodeListeners(vnode) {
     ])
   ].sort();
 }
-
+/**
+ * @param  {VueComponent} vm
+ * @return {VNode} the root vnode
+ */
 function vnodeOf(vm) {
   return vm._vnode || vm.$vnode;
 }
-
-function getVnodeChildren(vnode) {
+/**
+ * @param  {VNode}
+ * @return {VNode[]}
+ */
+function getVNodeChildren(vnode) {
   return vnode.children || [];
 }
 
 // https://vuejs.org/v2/guide/render-function.html#Event-amp-Key-Modifiers
-export function getAllVNodeListeners(
-  vnode
-  // siblings = [vnode],
-  // path = [],
-  // agg = {},
+function aggregateVNodeListeners(
+  vnode,
+  _,
+  { selector = [], family = [vnode], agg = {} } = {}
 ) {
-  let state = { family: [vnode], path: "", agg: {} };
-  const getChildren = getVnodeChildren;
+  const dbg = dbgr("agg");
+  // console.log(agg.id);
+  // TODO: figure out how to break this into a composable function
+  selector = [...selector, selectorOf(vnode, family)];
+  dbg(
+    selector.join(" > ") + "\n",
+    JSON.stringify(agg, null, 2),
+    `fam: ${family.length}`
+  );
+  const listeners = getVNodeListeners(vnode);
+  assert(!(selector in agg), `${selector} in ${JSON.stringify(agg, null, 2)}`);
+  if (listeners.length) agg[selector.join(" > ")] = listeners;
+  dbgr("agg:listeners")(listeners);
+  family = getVNodeChildren(vnode);
+  return { selector, family, agg };
+}
+
+export function getAllVNodeListeners(vnode) {
+  let state = { selector: [], family: [vnode], agg: {} };
+  const getChildren = getVNodeChildren;
   const shouldRecur = vnode => Boolean(vnode) && isVisible(vnode);
-  const callbacks = [
-    (vnode, _, { selector = "", agg = {}, family = [vnode] } = {}) => {
-      selector = [...selector, selectorOf(vnode, family)];
-      const listeners = getVNodeListeners(vnode);
-      assert(
-        !(selector in agg),
-        `${selector} in ${JSON.stringify(agg, null, 2)}`
-      );
-      if (listeners.length) agg[selector.join(" > ")] = listeners;
-      family = getChildren(vnode);
-      return { selector, family, agg };
-    }
-  ];
+  const callbacks = [aggregateVNodeListeners];
 
   return dfs(vnode, getChildren, shouldRecur, callbacks, state, state).agg;
 }
@@ -106,26 +145,6 @@ export function watchInteractivityChanges(
   return watcher;
 }
 
-// an abstract function for walking a tree
-function dfs(
-  node,
-  getChildren = noop,
-  shouldRecur = noop,
-  callbacks = [],
-  state = {},
-  parentState = {}
-) {
-  state = callbacks.reduce(
-    (currentState, cb) => cb(node, currentState, parentState),
-    state
-  );
-  parentState = state;
-  return (getChildren(node) || []).reduce((state, child) => {
-    return shouldRecur(child, state)
-      ? dfs(child, getChildren, shouldRecur, callbacks, state, parentState)
-      : state;
-  }, state);
-}
 const getName = vm => {
   const {
     $options: { name, _componentTag }
@@ -133,14 +152,13 @@ const getName = vm => {
   return `${name || _componentTag || "anonymous"}[${vm._uid}]`;
 };
 
-export function tagTree(vnode, indent = 0) {
-  const getChildren = getVnodeChildren;
+export function tagTree(vnode) {
+  const getChildren = getVNodeChildren;
   const state = { repr: "", indent: 0 };
   const callbacks = [
     (vnode, { repr = "" } = {}, { indent = 0 } = {}) => {
-      const name = vnode.componentInstance
-        ? getName(vnode.componentInstance)
-        : vnode.tag;
+      const vm = vmOf(vnode);
+      const name = vm ? getName(vm) : vnode.tag;
       return {
         repr: repr + "\n" + " ".repeat(indent) + name,
         indent: indent + 1
@@ -148,7 +166,7 @@ export function tagTree(vnode, indent = 0) {
     }
   ];
   const shouldRecur = vnode => Boolean(vnode.tag) && vnode.elm.nodeType != 3;
-  return dfs(vnode, getChildren, shouldRecur, callbacks, state, state).repr;
+  return dfs(vnode, getChildren, shouldRecur, callbacks, state).repr;
 }
 
 export function componentTagTree(vm) {
@@ -161,12 +179,17 @@ export function componentTagTree(vm) {
       return { repr, indent };
     }
   ];
-  return dfs(vm, getChildren, () => true, callbacks, { repr: "", indent: 0 })
-    .repr;
+  const state = {
+    repr: "",
+    indent: 0
+  };
+  return dfs(vm, getChildren, () => true, callbacks, state, state).repr;
 }
 
-const namespace = ns("__MONKEY");
-const visibilityMark = namespace("visible__");
+const namespace = ns("__MONKEY"),
+  visibilityMark = namespace("VISIBLE__"),
+  vmUidMark = namespace("UID__"),
+  uid = idSequence();
 const markVisible = (v, { visible = true } = {}) => {
   return (v[visibilityMark] = visible || isVisible(v || v._vnode));
 };
@@ -174,16 +197,7 @@ const markVisible = (v, { visible = true } = {}) => {
 // const vmOf = vnode => vnode.componentInstance;
 // const fnContext = vnode => vnode.fnContext;
 // import { isFunctional } from "../component";
-const makeSelector = (v, { siblings = [v], selector = "" } = {}) => {
-  return (selector += ` > ${selectorOf(v, siblings)}`);
-};
-const getListeners = (v, { visible = true, selector = "", agg = {} } = {}) => {
-  const listeners = visible ? getVNodeListeners(v) : [];
-  // TODO: case for vm
-  agg[selector] = listeners;
-  return agg;
-};
-
+//  updated = noop, beforeDestroy = noop,
 const bindHooks = (vm, { vms, actions } = {}) => {
   vm.$on(`hook:updated`, () => {
     // update vm
@@ -193,84 +207,72 @@ const bindHooks = (vm, { vms, actions } = {}) => {
     actions.delete(vm);
   });
 };
+const aggId = idSequence("agg");
 const isAbstract = vm => delve(vm, "$options.abstract", false);
+const vmOf = vnode => vnode.componentInstance; // naive
 export function watch(vm) {
+  const vnode = vnodeOf(vm);
   const actions = new Map();
-  const getChildren = vnode =>
-    [
-      ...getVnodeChildren(vnode),
+  // const captured = new Set(); /*new Map();*/
+  function getChildren(vnode) {
+    return [
+      ...getVNodeChildren(vnode),
       delve(vnode, "componentInstance._vnode")
     ].filter(Boolean);
+  }
   let state = {
+    // contested bewteen this vnode and its parent
+    vm: undefined,
+    // inhereted -- vnode
     visible: true,
-    siblings: undefined,
-    selector: "",
-    actions,
-    agg: {}
+    siblings: undefined, // normally an array of vnodes
+    selector: [],
+    agg: { id: aggId.next() },
+    // always the same Map instance
+    actions
   };
 
-  // const observed = new Set();
-  // state: {
-  //   visible: bool,
-  //   siblings: VNode[],
-  //   selector: string,
-  //   agg: Map(selector => action)
-  // }
-  // const vmOf = vnode => {};
-  const refresh = vm => {
-    actions.set(vm, getAllVNodeListeners(vnodeOf(vm)));
-  };
-  const callbacks = [
-    (vnode, state = { visible: true, selector: "" }) => {
-      // const [vm, vnode] = vm => {
-      //   }
-      // };
-
-      state.visible = markVisible(vnode, state); // side-effect: marks vnode
-      const vm = vnode.componentInstance || null;
-      if (vnode.componentInstance) {
+  const _refresh = (
+    vnode,
+    _ /*{} = {}*/, // state,
+    {
+      visible = true,
+      selector = [],
+      family = [],
+      agg = {},
+      actions,
+      captured
+    } = {} // parentState
+    // parentState = {visible, selector, vm, agg}
+  ) => {
+    const dbg = dbgr("agg:rf");
+    visible = markVisible(vnode, { visible }); // side-effect: marks vnode
+    let vm = vmOf(vnode);
+    if (vm) {
+      if (!actions.has(vm) && !vm[vmUidMark]) {
+        bindHooks(vm, { vms: captured, actions });
+        vm[vmUidMark] = uid.next();
       }
-      if (isAbstract(vm) && delve(vm, "_vnode.componentInstance")) {
+      dbg("hasVm", agg.id);
+      agg = { id: aggId.next() }; // break inheritence
+      dbg("newVm", agg.id);
+      actions.set(vm, agg); // will get populated by callbacks on children
+      selector = []; // selectors should be relative to the nearest VM
+      if (isAbstract(vm) && vmOf(vnodeOf(vm))) {
+        /*delve(vm, "_vnode.componentInstance")*/
         vm = vm._vnode.componentInstance;
       }
-      if (state.vm) {
-        state.vm[visibilityMark] = state.visible;
-      }
-      // state.vnode =
-      state.selector = makeSelector(vnode, state);
-      state.agg = getListeners(vnode, state);
-      return state;
+      vm[visibilityMark] = visible;
+      // register listeners in actions here
     }
-  ];
-  // const setHidden = v => (v[visibilityMark] = true);
-  // const setVisible = v => (v[visibilityMark] = false);
-
-  function process(vnode, siblings = [vnode], selector = "", agg = {}) {
-    selector += ` > ${selectorOf(vnode, siblings)}`;
-    assert(
-      !(selector in agg),
-      `selector unexpectedly in aggregator: '${selector}'`
-    );
-    agg[selector] = listeners;
-    return agg;
-  }
-
-  state = dfs(vm.$vnode, getChildren, () => true, callbacks, state);
+    const aggregated = aggregateVNodeListeners(vnode, {
+      selector,
+      family,
+      agg
+    });
+    return { visible, ...aggregated, actions, captured };
+  };
+  const callbacks = [_refresh];
+  state = dfs(vnode, getChildren, () => true, callbacks, state, state);
   return state.actions;
-}
-export function _watch(vm) {
-  const vms = new Map(/*id:vm*/);
-  const actions = new Map(/*vm: {[selector]: Array<string>}*/);
-
-  function recur(
-    vnode,
-    visible = true,
-    family = [vnode],
-    selector = "",
-    agg = {}
-  ) {
-    visible = markVisible(vnode, { visible });
-    console.log({ visible });
-  }
-  recur(vm._vnode);
 }

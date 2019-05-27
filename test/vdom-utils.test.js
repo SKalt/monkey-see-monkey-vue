@@ -1,5 +1,7 @@
 /* eslint-env jest */
+/* eslint-disable no-unused-vars */
 // const { cleanup, Vue, utils } = require("./forge");
+import debug from "debug";
 import utils from "@vue/test-utils";
 import Counter2 from "./fixtures/Counter.vue";
 import { displayComponentTree, nameOf } from "../src/utils/component.js";
@@ -75,4 +77,10 @@ test("walker", () => {
   console.log(componentTagTree(mounted.vm.$root));
   // mounted.vm.__hidden__ = true;
   // console.log(mounted.vm.__hidden__); // you can
+  debug.enable("msmv:agg*");
+  const result = watch(mounted.vm);
+  for (let [k, v] of result.entries()) {
+    console.log(`${nameOf(k)} :: ${JSON.stringify(v, null, 2)}`);
+  }
+  // console.log(result.entries());
 });
