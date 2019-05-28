@@ -13,9 +13,13 @@ the more complicated your vue.js application is, the harder it becomes to find t
 <!-- TODO: move this into the project board -->
 
 [ ] offline REPL
+
 [ ] event-triggering fuzzers (user interaction for shallow/mounted components)
+
 [ ] reproduction code for UI
+
 [ ] store-based fuzzers (actions, mutations)
+
 [ ] reproduction code for programmatic interactions
 
 ### Prior art
