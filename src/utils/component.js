@@ -1,5 +1,6 @@
 import { upperCamelCase, truthyKeys } from "./common.js";
-export const isRoot = vm => vm.$root === vm;
+import delve from "dlv";
+export const isRoot = vm => delve(vm, "$root", false) === vm;
 
 const getRoot = vm => vm.$root;
 
@@ -33,10 +34,16 @@ export function bindHook(vm, hook, callback) {
 export function nameOf(vm) {
   if (isRoot(vm)) return "Root";
   return upperCamelCase(
-    vm.$options.name ||
-      vm.$options._componentTag ||
-      (vm.$options.__file || "").replace(/^[-_/]/, "") ||
-      vm.$vnode.tag
+    delve(
+      vm,
+      "$options.name",
+      delve(
+        vm,
+        "$options._componentTag",
+        delve(vm, "$options.__file", "").replace(/^[-_/]/, "") ||
+          delve(vm, "$vnode.tag")
+      )
+    )
   );
 }
 

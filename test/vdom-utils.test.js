@@ -70,33 +70,41 @@ test("id sequence generation", () => {
   expect(id()).toEqual(0);
   expect(id()).toEqual(1);
 });
-test("reversible vnodeOf, vmOf", () => {
+test("vnodeOf(vm) accesses the inner virtual dom of a component", () => {
   const mounted = utils.mount(ButtonToggler);
   const vnode = vnodeOf(mounted.vm);
-  expect(vnode).toBeTruthy();
-  const reversed = vmOf(vnode);
-  debug.enable("reversal");
-  debug("reversal")(vnode.componentInstance);
-  expect(reversed).toBeTruthy();
-  expect(reversed).toEqual(mounted.vm);
+  expect(vnode).not.toEqual(mounted.vm.$vnode);
+  // vm.$vnode is the vnode representing the component in the parent virtual dom
+  // vm._vnode is the root of the component's section of the virtual dom
+  expect(vnode).toEqual(mounted.vm._vnode);
+  expect(vnode.context).toEqual(mounted.vm);
 });
-test("walker", () => {
-  const dbg = debug("walker");
+test("walking the vdom to aggregate component instances", () => {
   debug.enable("*");
-  /* eslint-disable no-console */
+  const dbg = debug("walker");
   const mounted = utils.mount(ButtonToggler);
-  // dbg(tagTree(mounted.vm._vnode));
-  // console.log(truthyKeys(mounted.vm));
-  // const _ = watch(mounted.vm);
-  // console.log({ _ });
-  // console.log([mounted.findAll(".click-me").length]);
-  // dbg(componentTagTree(mounted.vm.$root));
-  // mounted.vm.__hidden__ = true;
-  // console.log(mounted.vm.__hidden__); // you can
   const result = watch(mounted.vm);
-  for (let [k, v] of result.entries()) {
-    dbg(`${nameOf(k)} :: ${JSON.stringify(v, null, 2)}`);
+  let [root, ...subcomponents] = [...result.entries()];
+  expect(result.get(mounted.vm)).toEqual({
+    "div > a": ["click"],
+    // and then the Clickables
+    "div > div:last-child": ["hover"],
+    "div > div:nth-child(5)": ["click"]
+  });
+  expect(root[0]).toEqual(mounted.vm);
+  expect(subcomponents.length).toEqual(2);
+  {
+    let [vm, listeners] = subcomponents[0];
+    expect(nameOf(vm)).toEqual("Clickable");
+    expect(listeners).toEqual({
+      "span.click-me.mountable": ["click"]
+    });
   }
-  dbg(nameOf(mounted.vm));
-  // console.log(result.entries());
+  {
+    let [vm, listeners] = subcomponents[1];
+    expect(nameOf(vm)).toEqual("Clickable");
+    expect(listeners).toEqual({
+      "span.click-me.displayable": ["click"]
+    });
+  }
 });

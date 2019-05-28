@@ -1,5 +1,3 @@
-const debug = require("debug");
-import delve from "dlv";
 export function htmlId(vnode) {
   const id = (vnode.elm || {}).id;
   return id ? "#" + id : "";
@@ -14,28 +12,12 @@ export function className(vnode) {
     .map(cls => "." + cls)
     .join("");
 }
-import { truthyKeys } from "../common";
 export function childNumber(vnode, family = [vnode]) {
-  // const dbg = debug("child-number");
-  // dbg({
-  //   vnode: [vnode.tag, delve(vnode, "elm.nodeType")],
-  //   family: family.map(f => [f.tag, delve(f, "elm.nodeType")])
-  // });
-  // debug("css:child-number")();
-  // vnode.parent isn't reliably defined.
-  // if (!vnode.tag) console.log("ught");
-  // family = family.filter(f => Boolean(f.tag));
-  // debug("css:child-number")(JSON.stringify(family.map(f => f.tag)));
-
-  if (family.filter(f => f.tag === null).length > 0) {
-    // debug("css:child-number:bad")(truthyKeys(family[0]));
-  }
+  // should hold true: vnode is an entry in family
   if (family.filter(f => f.tag === vnode.tag).length === 1) return "";
   const n = family.indexOf(vnode) + 1; // css selectors are 1-indexed
 
   if (n == 0) {
-    debug("css:child-number:bad")(family);
-    debug("css:child-number:bad-2")(vnode.children[0].elm.nodeType);
     throw new Error(
       `vnode ${vnode.tag} not in family ${JSON.stringify(
         family.map(f => f.tag)
