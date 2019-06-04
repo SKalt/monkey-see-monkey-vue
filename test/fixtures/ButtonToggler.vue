@@ -12,7 +12,11 @@
       @custom-event="active = !active"
     />
     <div v-if="active" @hover="yellIncoherently"></div>
-    <div v-show="active" @click="yellIncoherently"></div>
+    <div
+      class="hidden-if-inactive"
+      v-show="active"
+      @click="yellIncoherently"
+    ></div>
   </div>
 </template>
 <script>

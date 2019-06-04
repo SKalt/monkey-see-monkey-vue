@@ -3,20 +3,21 @@
 // const { cleanup, Vue, utils } = require("./forge");
 const debug = require("debug");
 debug.disable("*");
-// const debug = require("debug");
+import Vue from "vue";
+Vue.config.warnHandler = () => null;
 import utils from "@vue/test-utils";
-import Counter2 from "./fixtures/Counter.vue";
-import { displayComponentTree, nameOf } from "../src/utils/component.js";
 import {
+  displayComponentTree,
+  nameOf,
   getAllVNodeListeners,
-  tagTree,
-  selectorOf,
-  vmOf,
-  vnodeOf,
+  innerVNode,
   watchInteractivityChanges
-} from "../src/utils/virtual-dom/index.js";
+  // tagTree,
+  // selectorOf,
+  // vmOf,
+  // truthyKeys
+} from "../src/utils";
 import dedent from "dedent";
-import { truthyKeys } from "../src/utils/common";
 
 import Counter from "./fixtures/counter.js";
 test("finding a DOM event within a single component", async () => {
@@ -62,17 +63,9 @@ test("find all DOM events in a tree of components", () => {
 
 import ButtonToggler from "./fixtures/ButtonToggler.vue";
 import { componentTagTree, idSequence, watch } from "../src/utils/virtual-dom";
-test("id sequence generation", () => {
-  let id = idSequence("foo");
-  expect(id()).toEqual("foo-0");
-  expect(id.next()).toEqual("foo-1");
-  id = idSequence();
-  expect(id()).toEqual(0);
-  expect(id()).toEqual(1);
-});
-test("vnodeOf(vm) accesses the inner virtual dom of a component", () => {
+test("innerVNode(vm) accesses the inner virtual dom of a component", () => {
   const mounted = utils.mount(ButtonToggler);
-  const vnode = vnodeOf(mounted.vm);
+  const vnode = innerVNode(mounted.vm);
   expect(vnode).not.toEqual(mounted.vm.$vnode);
   // vm.$vnode is the vnode representing the component in the parent virtual dom
   // vm._vnode is the root of the component's section of the virtual dom
@@ -80,8 +73,6 @@ test("vnodeOf(vm) accesses the inner virtual dom of a component", () => {
   expect(vnode.context).toEqual(mounted.vm);
 });
 test("walking the vdom to aggregate component instances", () => {
-  debug.enable("*");
-  const dbg = debug("walker");
   const mounted = utils.mount(ButtonToggler);
   const result = watch(mounted.vm);
   let [root, ...subcomponents] = [...result.entries()];
@@ -89,7 +80,7 @@ test("walking the vdom to aggregate component instances", () => {
     "div > a": ["click"],
     // and then the Clickables
     "div > div:last-child": ["hover"],
-    "div > div:nth-child(5)": ["click"]
+    "div > div.hidden-if-inactive:nth-child(5)": ["click"]
   });
   expect(root[0]).toEqual(mounted.vm);
   expect(subcomponents.length).toEqual(2);
@@ -107,4 +98,5 @@ test("walking the vdom to aggregate component instances", () => {
       "span.click-me.displayable": ["click"]
     });
   }
+  mounted.find("a").trigger("click");
 });
