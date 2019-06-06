@@ -13,18 +13,21 @@ import assert from "assert";
 function bindHooks(vm, { actions } = {}) {
   vm.$on("hook:updated", () => {
     // update vm in actions
-    const vnode = vm._vnode;
-    const agg = {},
+    const vnode = vm._vnode,
+      agg = {},
       selector = [],
       family = [vnode];
-    aggregateVNodeListeners(vnode, null, { agg, selector, family });
+    actions.set(
+      vm,
+      aggregateVNodeListeners(vnode, null, { agg, selector, family })
+    );
   });
   vm.$on(`hook:beforeDestroy`, () => {
     actions.delete(vm);
   });
 }
 
-function refresh(
+export function refresh(
   vnode,
   parentState = {
     visible: true,

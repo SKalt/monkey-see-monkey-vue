@@ -1,4 +1,4 @@
-import { resolve } from "./common";
+import { resolve } from "../common";
 import assert from "assert";
 export function htmlId(vnode) {
   const id = (vnode.elm || {}).id;

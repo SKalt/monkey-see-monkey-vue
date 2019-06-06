@@ -18,6 +18,6 @@ export const innerVNode = vm => vm._vnode;
  */
 export const getVNodeChildren = vnode => vnode.children || [];
 
-export function interactableElement(vnode) {
+export function notText(vnode) {
   return delve(vnode, "elm.nodeType") !== 3;
 }

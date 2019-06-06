@@ -8,15 +8,15 @@ import {
   getVNodeListeners,
   selectorOf,
   isVisible,
-  interactableElement
+  notText
 } from "../utils";
 import delve from "dlv";
 import assert from "assert";
 // https://vuejs.org/v2/guide/render-function.html#Event-amp-Key-Modifiers
-function getNonTextVNodeChildren(vnode) {
+export function getNonTextVNodeChildren(vnode) {
   return [...getVNodeChildren(vnode), delve(vnode, "componentInstance._vnode")]
     .filter(Boolean)
-    .filter(interactableElement);
+    .filter(notText);
 }
 
 function aggregateVNodeListeners(
@@ -46,6 +46,11 @@ export const visibilityMark = namespace("VISIBLE__");
 // vmUidMark = namespace("UID__"),
 export const uid = idSequence();
 
-export const markVisible = (v, { visible = true } = {}) => {
-  return (v[visibilityMark] = !!visible || isVisible(v || v._vnode));
+export const markVisible = (v, parentIsVisible) => {
+  return (v[visibilityMark] = !!parentIsVisible || isVisible(v || v._vnode));
 };
+
+export function propagateVisibility(vnode, parentIsVisible) {
+  const visible = markVisible(vnode, parentIsVisible);
+  getNonTextVNodeChildren(vnode).forEach(c => propagateVisibility(c, visible));
+}

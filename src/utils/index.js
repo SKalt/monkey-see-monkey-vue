@@ -15,7 +15,19 @@ export {
   isAbstract,
   vmOf
 } from "./component";
-export {} from "./virtual-dom";
+export {
+  // css selectors
+  htmlId,
+  className,
+  childNumber,
+  isVisible,
+  selectorOf,
+  // vnode utils
+  getVNodeListeners,
+  innerVNode,
+  getVNodeChildren,
+  interactableElement
+} from "./virtual-dom";
 export {
   truthyKeys,
   debug,
