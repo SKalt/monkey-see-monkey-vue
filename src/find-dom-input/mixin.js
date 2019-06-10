@@ -4,9 +4,11 @@ import {
   propagateVisibility,
   visibilityMark
 } from "./recursion.js";
-// import { refresh } from "./vdom-walker.js";
 
-const makeMixin = ({ mounted = noop, updated = noop, destroyed = noop }) => {
+export function watchAll(
+  Vue,
+  { mounted = noop, updated = noop, destroyed = noop }
+) {
   mounted = fnOrNoop(mounted);
   updated = fnOrNoop(updated);
   destroyed = fnOrNoop(destroyed);
@@ -42,24 +44,6 @@ const makeMixin = ({ mounted = noop, updated = noop, destroyed = noop }) => {
       destroyed(this);
     }
   };
-  return result;
-};
-
-export function watchAll(
-  Vue,
-  { mounted = noop, updated = noop, destroyed = noop }
-) {
-  mounted = fnOrNoop(mounted);
-  updated = fnOrNoop(updated);
-  destroyed = fnOrNoop(destroyed);
-
-  const roots = new Map(/*rootVM => vm => actions*/);
-
-  const _ = root => {
-    if (!roots.has(root)) roots.set(root, new Map());
-    return roots.get(root);
-  };
-  const { mixin, ...watcher } = makeMixin({ mounted, updated, destroyed });
   Vue.mixin(mixin);
-  return watcher;
+  return roots;
 }
