@@ -26,6 +26,9 @@ export const getName = vm => {
 };
 
 export const isAbstract = vm => delve(vm, "$options.abstract", false);
-export const vmOf = vnode => vnode.componentInstance; // naive
-// vnode.context can yield the overarching vm
-// I'm betting vnode.fnContext could as well.
+export const vmOfRootVNode = vnode => vnode.componentInstance; // naive
+// TODO: check how these handle with abstract / functional components
+export function vmOf(vnode) {
+  const paths = ["componentInstance", "context", "fnContext"];
+  return resolve(vnode, ...paths, ...paths.map(path => `parent.${path}`));
+}
