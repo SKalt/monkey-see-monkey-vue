@@ -1,8 +1,9 @@
 export {
   getVNodeListeners,
   innerVNode,
+  outerVNode,
   getVNodeChildren,
-  interactableElement
+  notText
 } from "./vnode";
 export {
   htmlId,

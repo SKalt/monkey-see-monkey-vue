@@ -5,28 +5,40 @@ import {
   visibilityMark
 } from "./recursion.js";
 
+// import {
+//   // util imports for debugging
+//   // nameOf
+// } from "../utils";
+/**
+ * initializer upsert for a Map. Comes with invokable default
+ * @param  {Map} map
+ * @param  {any} key
+ * @param  {Function} fallback
+ * @return {Map}
+ */
+function upsert(map, key, fallback) {
+  const result = map.get(key);
+  return result !== undefined ? result : map.set(key, fallback()).get(key);
+}
+
 export function watchAll(
   Vue,
-  { mounted = noop, updated = noop, destroyed = noop }
+  { mounted = noop, updated = noop, destroyed = noop } = {}
 ) {
   mounted = fnOrNoop(mounted);
   updated = fnOrNoop(updated);
   destroyed = fnOrNoop(destroyed);
   const roots = new Map(); // Map { rootVm => Map { vm => {[selector]: evts}} }
-
   function getOrCreateActions(vm) {
-    const root = vm.$root;
-    if (!roots.has(root)) roots.set(vm, new Map());
-    return roots.get(vm.$root);
+    return upsert(roots, vm.$root, () => new Map());
   }
   function refresh(vm) {
     const vnode = innerVNode(vm);
     const actions = getOrCreateActions(vm);
-    if (!vnode) return; // this is the root
     const prev = actions.get(vm);
     const next = getAllVNodeListeners(vnode, [vnode], [], {});
     actions.set(vm, next);
-    propagateVisibility(vnode, Boolean(vm.$vnode[visibilityMark]));
+    propagateVisibility(vnode, !vm.$vnode || !!vm.$vnode[visibilityMark]);
     return [prev, next];
   }
   const mixin = {

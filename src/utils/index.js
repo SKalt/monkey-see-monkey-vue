@@ -26,7 +26,7 @@ export {
   getVNodeListeners,
   innerVNode,
   getVNodeChildren,
-  interactableElement
+  notText
 } from "./virtual-dom";
 export {
   truthyKeys,

@@ -13,7 +13,7 @@ export default {
     };
   },
   props: {
-    notUsed: { type: Boolean, default: true }
+    notUsed: { type: Boolean, default: () => true }
   },
   methods: {
     onClick() {

@@ -5,3 +5,8 @@ export function resolve(object, ...paths) {
     if (result !== undefined) return result;
   }
 }
+
+export function upsert(map, key, fallback) {
+  const result = map.get(key);
+  return result !== undefined ? result : map.set(key, fallback).get(key);
+}
