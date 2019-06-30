@@ -13,7 +13,7 @@ import assert from "assert";
 function bindHooks(vm, { actions } = {}) {
   vm.$on("hook:updated", () => {
     // update vm in actions
-    const vnode = vm._vnode,
+    const vnode = innerVNode(vm),
       agg = {},
       selector = [],
       family = [vnode];
@@ -64,7 +64,7 @@ export function refresh(
     selector = []; // selectors should be relative to the nearest VM
 
     if (isAbstract(vm) && delve(vm, "_vnode.componentInstance")) {
-      vm = vm._vnode.componentInstance;
+      vm = innerVNode(vm).componentInstance;
     }
     vm[visibilityMark] = visible;
     // register listeners in actions here
