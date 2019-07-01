@@ -1,26 +1,43 @@
-import { isAbstract, innerVNode, dfs, getNonTextVNodeChildren } from "../utils";
+import {
+  isAbstract,
+  dfs,
+  innerVNode,
+  outerVNode
+  // nameOf,
+  // vmOf
+} from "../utils";
 
 import {
   markVisible,
   visibilityMark,
   vmUidMark,
   uid,
-  aggregateVNodeListeners
+  getAllVNodeListeners,
+  aggregateVNodeListeners,
+  getNonTextVNodeChildren,
+  propagateVisibility
 } from "./recursion";
 import delve from "dlv";
 import assert from "assert";
 
 function bindHooks(vm, { actions } = {}) {
+  const vnode = innerVNode(vm);
+  const refresh = vm => {
+    actions.set(vm, getAllVNodeListeners(vnode, [vnode], [], {}));
+    (vm.$children || [])
+      .filter(child => !actions.has(child))
+      .forEach(child => {
+        refresh(child);
+        bindHooks(child, { actions });
+      });
+  };
   vm.$on("hook:updated", () => {
     // update vm in actions
-    const vnode = innerVNode(vm),
-      agg = {},
-      selector = [],
-      family = [vnode];
-    actions.set(
-      vm,
-      aggregateVNodeListeners(vnode, null, { agg, selector, family })
+    propagateVisibility(
+      vnode,
+      !outerVNode(vm) || Boolean(outerVNode(vm)[visibilityMark])
     );
+    refresh(vm);
   });
   vm.$on(`hook:beforeDestroy`, () => {
     actions.delete(vm);
@@ -29,6 +46,7 @@ function bindHooks(vm, { actions } = {}) {
 
 export function refresh(
   vnode,
+  _,
   parentState = {
     visible: true,
     selector: [],
@@ -75,7 +93,7 @@ export function refresh(
 }
 
 export function watch(vm, actions = new Map()) {
-  const vnode = vm.$vnode;
+  const vnode = outerVNode(vm) || innerVNode(vm);
   let state = {
     // inhereted -- vnode
     visible: true,
@@ -91,7 +109,11 @@ export function watch(vm, actions = new Map()) {
   bindHooks(vm, { actions });
   state = { ...state, actions };
   const getChildren = getNonTextVNodeChildren;
-  const callbacks = [refresh];
+  // const log = (vn, c) => {
+  //   console.log(vn, vmOf(vn) && nameOf(vmOf(vn)));
+  //   return c;
+  // };
+  const callbacks = [/*log,*/ refresh];
   state = dfs(vnode, getChildren, () => true, callbacks, state, state);
   return state.actions;
 }

@@ -25,6 +25,7 @@ export {
   // vnode utils
   getVNodeListeners,
   innerVNode,
+  outerVNode,
   getVNodeChildren,
   notText
 } from "./virtual-dom";

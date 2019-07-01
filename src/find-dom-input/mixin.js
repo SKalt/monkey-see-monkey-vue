@@ -1,4 +1,4 @@
-import { fnOrNoop, innerVNode, noop } from "../utils";
+import { fnOrNoop, innerVNode, outerVNode, noop } from "../utils";
 import {
   getAllVNodeListeners,
   propagateVisibility,
@@ -38,7 +38,10 @@ export function watchAll(
     const prev = actions.get(vm);
     const next = getAllVNodeListeners(vnode, [vnode], [], {});
     actions.set(vm, next);
-    propagateVisibility(vnode, !vm.$vnode || !!vm.$vnode[visibilityMark]);
+    propagateVisibility(
+      vnode,
+      !outerVNode(vm) || Boolean(outerVNode(vm)[visibilityMark])
+    );
     return [prev, next];
   }
   const mixin = {

@@ -19,7 +19,7 @@ export function getNonTextVNodeChildren(vnode) {
     .filter(notText);
 }
 
-function aggregateVNodeListeners(
+export function aggregateVNodeListeners(
   vnode,
   _,
   { selector = [], family = [vnode], agg = {} } = {}
