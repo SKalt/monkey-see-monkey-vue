@@ -1,0 +1,22 @@
+{
+  "globals": {
+    "wrapper": true,
+    "expect": true,
+    "Element": true
+  },
+  "root": true,
+  "plugins": [
+    "flowtype"
+  ],
+  "extends": [
+    "plugin:vue-libs/recommended",
+    "plugin:flowtype/recommended"
+  ],
+  "rules": {
+    "no-debugger": 2,
+    "no-proto": 0,
+    "space-before-function-paren": 0,
+    "object-curly-spacing": 0,
+    "indent": 0
+  }
+}

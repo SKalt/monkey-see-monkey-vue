@@ -1,0 +1,3 @@
+[submodule "external-modules/vue-test-utils/submodule"]
+	path = external-modules/vue-test-utils/submodule
+	url = git@github.com:vuejs/vue-test-utils.git
