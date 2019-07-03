@@ -38,4 +38,8 @@ the more complicated your vue.js application is, the harder it becomes to find t
 - [`gremlins.js`](https://github.com/marmelab/gremlins.js)
 - [Jarno Rantanen's presentation on fuzzing redux](https://github.com/jareware/fuzzing-redux-prese)
 
-  </details>
+</details>
+
+## Contributing
+
+Please note that this project is released with a [Contributor Code of Conduct](CODE-OF-CONDUCT.md). By participating in this project you agree to abide by its terms.
